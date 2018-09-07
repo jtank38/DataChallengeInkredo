@@ -1,7 +1,9 @@
 import pandas as pd
 import ConfigParser
 import numpy as np
+from collections import Counter
 import sys
+import operator
 
 
 class EventLog():
@@ -11,11 +13,12 @@ class EventLog():
         config.read('D:\GitReps\DataChallengeInkredo\settings.cfg')
         self.CSVFileName = config.get('filename', 'CSVFilename')
         self.dataframe=self.ReadCSV(self.CSVFileName)
-        self.ClickThroughRate(self.dataframe)
-
+        #self.ClickThroughRate(self.dataframe)
+        self.ResultPosition(self.dataframe)
     def ReadCSV(self,CSVName):
         df=pd.read_csv(CSVName,dtype=object)
-        return df
+        df2=df.replace(np.nan, '', regex=True)
+        return df2
 
 
     def ClickThroughRate(self,df):
@@ -52,6 +55,26 @@ class EventLog():
 
         return np.divide(float(PagesVisit_Count),float(Sessioncount)) #Considering 1000 session counts
 
+    def ResultPosition(self,df):
+        DateGroupkeys = df.groupby('timestamp1').groups.keys()
+        Result=[]
+        for i in DateGroupkeys:
+            df_sub = df[(df['timestamp1'] == i) & (df['result_position'] != 'NA')]
+            A=self.ResultPositionHelper(df_sub)
+            Result.append((max((Counter(A)).iteritems(), key=operator.itemgetter(1))[0],i))
+
+        print Result
+
+    def ResultPositionHelper(self,df):
+        SessionIDList=[]
+        Result=[]
+        for i in df.loc[:,'session_id']:
+            SessionIDList.append(i)
+        SessionIDListUnique=list(set(SessionIDList))
+        for session in SessionIDListUnique:
+            df_sub = df[df['session_id'] == session].sort_values(by='timestamp')
+            Result += df_sub.loc[:,'result_position'].tolist()
+        return Result
 
 
 
