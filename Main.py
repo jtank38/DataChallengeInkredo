@@ -13,8 +13,13 @@ class EventLog():
         config.read('D:\GitReps\DataChallengeInkredo\settings.cfg')
         self.CSVFileName = config.get('filename', 'CSVFilename')
         self.dataframe=self.ReadCSV(self.CSVFileName)
+        self.Groupkeys = self.dataframe.groupby('timestamp1').groups.keys()
         #self.ClickThroughRate(self.dataframe)
-        self.ResultPosition(self.dataframe)
+        #self.ResultPosition(self.dataframe)
+        self.ZeroResultRates(self.dataframe,self.Groupkeys)
+
+
+
     def ReadCSV(self,CSVName):
         df=pd.read_csv(CSVName,dtype=object)
         df2=df.replace(np.nan, '', regex=True)
@@ -76,7 +81,28 @@ class EventLog():
             Result += df_sub.loc[:,'result_position'].tolist()
         return Result
 
+    def ZeroResultRates(self,df,Gkeys):
+        Result_a=[]
+        Result_b = []
+        for i in Gkeys:
+            df_date_a= df[(df['timestamp1'] == i)& (df['group']=='a')]
+            df_date_b=df[(df['timestamp1'] == i)& (df['group']=='b ')]
+            Result_a.append((self.ZeroResultRatesHelper(df_date_a),i))
+            Result_b.append((self.ZeroResultRatesHelper(df_date_b),i))
+        print Result_a,'\n',Result_b
 
+    def ZeroResultRatesHelper(self,df):
+        SessionIDList = []
+        Count = 0
+        for i in df.loc[:, 'session_id']:
+            SessionIDList.append(i)
+        SessionIDListUnique = list(set(SessionIDList))
+        for session in SessionIDListUnique:
+            df_sub = df[(df['session_id'] == session) & (df['action'] == 'searchResultPage')]
+            for i in df_sub.loc[:,'n_results']:
+                if int(i)==0:
+                    Count+=1
+        return Count
 
 
 if __name__=='__main__':
