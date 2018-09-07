@@ -4,6 +4,11 @@ import numpy as np
 from collections import Counter
 import sys
 import operator
+import matplotlib.pyplot as plt
+import datetime
+import matplotlib.dates as mdates
+
+
 
 
 class EventLog():
@@ -14,9 +19,9 @@ class EventLog():
         self.CSVFileName = config.get('filename', 'CSVFilename')
         self.dataframe=self.ReadCSV(self.CSVFileName)
         self.Groupkeys = self.dataframe.groupby('timestamp1').groups.keys()
-        #self.ClickThroughRate(self.dataframe)
-        #self.ResultPosition(self.dataframe)
-        self.ZeroResultRates(self.dataframe,self.Groupkeys)
+        self.ClickThroughRate(self.dataframe,self.Groupkeys)
+        #self.ResultPosition(self.dataframe,self.Groupkeys)
+        #self.ZeroResultRates(self.dataframe,self.Groupkeys)
 
 
 
@@ -26,17 +31,15 @@ class EventLog():
         return df2
 
 
-    def ClickThroughRate(self,df):
-        Groupkeys = df.groupby('timestamp1').groups.keys()
+    def ClickThroughRate(self,df,Gk):
         Result_a=[]
         Result_b = []
-        for i in Groupkeys:
+        for i in Gk:
             df_date_a= df[(df['timestamp1'] == i)& (df['group']=='a')]
             df_date_b=df[(df['timestamp1'] == i)& (df['group']=='b')]
             Result_a.append((self.ClickThroughRateHelper(df_date_a),i))
             Result_b.append((self.ClickThroughRateHelper(df_date_b), i))
-        print Result_a,Result_b
-
+        self.Visualize(Result_a)
 
 
     def ClickThroughRateHelper(self,df):
@@ -47,7 +50,7 @@ class EventLog():
             SessionIDList.append(i)
         SessionIDListUnique=list(set(SessionIDList))
 
-        for session in SessionIDListUnique:
+        for session in SessionIDListUnique[:100]:
             df_sub= df[df['session_id']==session].sort_values(by='timestamp')
             Timestamplist= df_sub[df_sub['action']=='searchResultPage']['timestamp'].tolist()
             Sessioncount+=len(df_sub.index)
@@ -60,10 +63,10 @@ class EventLog():
 
         return np.divide(float(PagesVisit_Count),float(Sessioncount)) #Considering 1000 session counts
 
-    def ResultPosition(self,df):
-        DateGroupkeys = df.groupby('timestamp1').groups.keys()
+    def ResultPosition(self,df,Gk):
+
         Result=[]
-        for i in DateGroupkeys:
+        for i in Gk:
             df_sub = df[(df['timestamp1'] == i) & (df['result_position'] != 'NA')]
             A=self.ResultPositionHelper(df_sub)
             Result.append((max((Counter(A)).iteritems(), key=operator.itemgetter(1))[0],i))
@@ -103,6 +106,19 @@ class EventLog():
                 if int(i)==0:
                     Count+=1
         return Count
+
+    def Visualize(self,data):
+        rate=[]
+        Time=[]
+        for i in data:
+            rate.append(i[0])
+            Time.append(datetime.datetime.strptime(i[1], "%d/%m/%Y").strftime("%d-%m-%Y"))
+        y = range(len(Time))
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%m-%Y'))
+        plt.gca().xaxis.set_major_locator(mdates.DayLocator())
+        plt.plot(rate, y)
+        plt.gcf().autofmt_xdate()
+
 
 
 if __name__=='__main__':
